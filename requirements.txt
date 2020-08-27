@@ -1,0 +1,11 @@
+numpy
+pandas
+scipy
+matplotlib
+jupyter
+alphashape
+geopandas
+shapely
+netCDF4
+pyproj
+descartes
