@@ -3,4 +3,7 @@
 products/
 presentations/
 literature/
+example-code/
+.vscode/
 */.ipynb_checkpoints/
+*/__pycache__/
