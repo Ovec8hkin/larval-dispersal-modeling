@@ -4,6 +4,8 @@ products/
 presentations/
 literature/
 example-code/
+auxdata/noaa-trawl-data
+auxdata/EcoMon*
 .vscode/
 */.ipynb_checkpoints/
 */__pycache__/
