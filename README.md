@@ -16,3 +16,7 @@ Population connectivity is the inter-generational movement of individuals among 
 ## Basic Methodology
 _____
 This project utilizes a vareity of computational modeling techniques to evaluate larval dispersal and connectivity patterns between different time periods, indicative of different environmental conditions. An additive model is used to predict spawning suitability across the Northeast US Shelf, across which particles, representing the larvae of a given fish species, are seeded. These particles are then enbedded into a regional ocean model and allowed to disperse, before they being reprocessed to allow for settlement processes to occur. 
+
+## Acknowledgements
+_____
+This project is funded in part by the NSF-funded NES-LTER project through Woods Hole Oceanographic Institution.
