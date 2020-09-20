@@ -48,10 +48,10 @@ get_dharma_residuals <- function(gam, data){
 
 compute_aic_scores <- function(...){
   aic_scores = AIC(...)
-  # aic_scores = aic_scores[order(aic_scores$AIC),]
-  # delta_aic = aic_scores$AIC - min(aic_scores$AIC)
-  # aic_scores = cbind(aic_scores, delta_aic)
-  # aic_scores = round(aic_scores, 3)
+  aic_scores = aic_scores[order(aic_scores$AIC),]
+  delta_aic = aic_scores$AIC - min(aic_scores$AIC)
+  aic_scores = cbind(aic_scores, delta_aic)
+  aic_scores = round(aic_scores, 3)
   return(aic_scores)
 }
 
@@ -110,6 +110,129 @@ predict_data <- function(model, data){
   pred_new = cbind(data, predicted)
   pred_new$floored = floor(predicted)
   return(pred_new)
+}
+
+get_environmental_data <- function(ys, ms=1:12){
+  predicted_data = data.frame()
+  for(y in ys){
+    for(m in ms){
+      month = str_pad(m, 2, pad="0")
+      fname=paste("../auxdata/environmental-data/environmental_data_", y, month, ".csv", sep="")
+      print(fname)
+      pred_data = read.csv(fname)
+      colnames(pred_data) = c("lon", "lat", "sfc_temp", "sfc_salt", "depth")
+      nor_eas = convert_to_northing_easting(pred_data$lat, pred_data$lon)
+      pred_data = cbind(pred_data, nor_eas)
+      
+      # sub = (pred_data$sfc_salt > 30 & pred_data$sfc_salt < 35) & 
+      #   (pred_data$sfc_temp > -2 & pred_data$sfc_temp < 30) & 
+      #   (pred_data$depth > 0 & pred_data$depth < 2000)
+      # 
+      # pred_data = pred_data[sub,]
+      
+      # predicted = predict_data(model, pred_data)
+      len = length(pred_data[,1])
+      years = rep(y, len)
+      months = rep(m, len)
+      
+      pred_data$year = years
+      pred_data$month = months
+      
+      predicted_data = dplyr::bind_rows(predicted_data, pred_data)
+    }
+  }
+  return(predicted_data)
+}
+
+plot_cumulative_catch <- function(df, title){
+  summed_predictions = df %>% group_by(lat, lon) %>% summarise(Total=sum(predicted))
+  summed_predictions = as.data.frame(summed_predictions)
+  p = ggplot(summed_predictions)+
+    geom_point(
+      aes(x=lon, 
+          y=lat, 
+          colour=log(floor(Total)), 
+          alpha=ifelse(log(floor(Total)) < 0, 0, 1)
+      ), 
+      size=0.1
+    )+
+    scale_color_gradient2()+
+    labs(x="Longitude", 
+         y="Latitude", 
+         title=title, 
+         color="Catch"
+    )+
+    guides(alpha=FALSE)
+  return(p)
+}
+
+plot_average_catch <- function(df, title){
+  average_predictions = df %>% group_by(lat, lon) %>% summarise(Average=mean(predicted))
+  average_predictions = as.data.frame(average_predictions)
+  p = ggplot(average_predictions)+
+    geom_point(
+      aes(x=lon, 
+          y=lat, 
+          colour=log(floor(Average)), 
+          alpha=ifelse(log(floor(Average)) < 0, 0, 1)
+      ), 
+      size=0.1
+    )+
+    scale_color_gradient2()+
+    labs(x="Longitude", 
+         y="Latitude", 
+         title=title, 
+         color="Catch"
+    )+
+    guides(alpha=FALSE)
+  return(p)
+}
+
+plot_yearly_catch <- function(df, title){
+  yearly_average_predictions = df %>% 
+    group_by(lat, lon, year) %>% 
+    summarise(Total=sum(predicted))
+  yearly_average_predictions = as.data.frame(yearly_average_predictions)
+  p = ggplot(yearly_average_predictions)+
+    geom_point(
+      aes(x=lon,
+          y=lat,
+          colour=log(floor(Total)),
+          alpha=ifelse(log(floor(Total)) < 0, 0, 1)
+      ),
+      size=0.1
+    )+
+    scale_color_gradient2()+
+    labs(x="Longitude",
+         y="Latitude",
+         title=title,
+         color="Catch"
+    )+
+    guides(alpha=FALSE)+facet_wrap(~year)
+  return(p)
+}
+
+plot_monthly_catch <- function(df, title){
+  monthly_average_predictions = df %>% 
+    group_by(lat, lon, month) %>% 
+    summarise(Total=sum(predicted))
+  
+  ggplot(monthly_average_predictions)+
+    geom_point(
+      aes(x=lon,
+          y=lat,
+          colour=log(floor(Total)),
+          alpha=ifelse(log(floor(Total)) < 0, 0, 1)
+      ),
+      size=0.1
+    )+
+    scale_color_gradient2()+
+    labs(x="Longitude",
+         y="Latitude",
+         title=title,
+         color="Catch"
+    )+
+    guides(alpha=FALSE)+facet_wrap(~month)
 }
 
 
