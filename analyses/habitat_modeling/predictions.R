@@ -1,4 +1,4 @@
-source("../src/gam_functions.R")
+source("../../src/gam_functions.R")
 
 cod_catch_data = get_ecomon_catch_data("gadmor_100m3", "../auxdata/catch-data/ecomon_cod.csv")
 had_catch_data = get_ecomon_catch_data("melaeg_100m3", "../auxdata/catch-data/ecomon_haddock.csv")
@@ -35,58 +35,104 @@ flo_predicted = predict_data(flo_gam, edata)
 mac_predicted = predict_data(mac_gam, edata)
 but_predicted = predict_data(but_gam, edata)
 
+cod_predicted=cbind(cod_predicted, Species=rep_len("Atlantic Cod", length(cod_predicted[,1])))
+had_predicted=cbind(had_predicted, Species=rep_len("Haddock", length(had_predicted[,1])))
+flo_predicted=cbind(flo_predicted, Species=rep_len("Yellowtail Flounder", length(flo_predicted[,1])))
+mac_predicted=cbind(mac_predicted, Species=rep_len("Atlantic Mackerel", length(mac_predicted[,1])))
+but_predicted=cbind(but_predicted, Species=rep_len("American Butterfish", length(but_predicted[,1])))
+
+predicted = dplyr::bind_rows(cod_predicted, had_predicted, flo_predicted, mac_predicted, but_predicted)
+predicted$Species = factor(predicted$Species, levels=c("Atlantic Cod", "Haddock", "Yellowtail Flounder", "Atlantic Mackerel", "American Butterfish"))
+
+
 #-----
 
-cod_sum = plot_cumulative_catch(cod_predicted, title="Predicted Cumulative Atlantic Cod Distribution (Jan 1980 - Dec 1989)")
 cod_annual = plot_yearly_catch(cod_predicted, title="Predicted Cumulative Atlantic Cod Distribution by Year")
 cod_monthly = plot_monthly_catch(cod_predicted, title="Predicted Cumulative Atlantic Cod Distribution by Month")
 
-cod_sum
 cod_annual
 cod_monthly
+ggsave("../../figs/habitat-models/cod-monthly.png", width=20, height=15, dpi=500, units="in")
+
 
 #-----
   
-had_sum = plot_cumulative_catch(had_predicted, title="Predicted Cumulative Haddock Distribution (Jan 1980 - Dec 1989)")
 had_annual = plot_yearly_catch(had_predicted, title="Predicted Cumulative Haddock Distribution by Year")
 had_monthly = plot_monthly_catch(had_predicted, title="Predicted Cumulative Haddock Distribution by Month")
 
-had_sum
 had_annual
 had_monthly
+ggsave("../../figs/habitat-models/had-monthly.png", width=20, height=15, dpi=500, units="in")
+
 
 #-----
 
-flo_sum = plot_cumulative_catch(flo_predicted, title="Predicted Cumulative Yellowtail Flounder Distribution (Jan 1980 - Dec 1989)")
 flo_annual = plot_yearly_catch(flo_predicted, title="Predicted Cumulative Yellowtail Flounder Distribution by Year")
 flo_monthly = plot_monthly_catch(flo_predicted, title="Predicted Cumulative Yellowtail Flounder Distribution by Month")
-flo_mean = plot_average_catch(flo_predicted, title="Predicted Average Yellowtail Flounder Distribution")
 
-flo_sum
 flo_annual
 flo_monthly
-flo_mean
+ggsave("../../figs/habitat-models/flo-monthly.png", width=20, height=15, dpi=500, units="in")
+
 #-----
 
-mac_sum = plot_cumulative_catch(mac_predicted, title="Predicted Cumulative Atlantic Mackerel Distribution (Jan 1980 - Dec 1989)")
 mac_annual = plot_yearly_catch(mac_predicted, title="Predicted Cumulative Atlantic Mackerel Distribution by Year")
 mac_monthly = plot_monthly_catch(mac_predicted, title="Predicted Cumulative Atlantic Mackerel Distribution by Month")
 
-mac_sum
 mac_annual
 mac_monthly
+ggsave("../../figs/habitat-models/mac-monthly.png", width=20, height=15, dpi=500, units="in")
+
 
 #-----
 
-but_sum = plot_cumulative_catch(but_predicted, title="Predicted Cumulative American Butterfish Distribution (Jan 1980 - Dec 1989)")
 but_annual = plot_yearly_catch(but_predicted, title="Predicted Cumulative American Butterfish Distribution by Year")
 but_monthly = plot_monthly_catch(but_predicted, title="Predicted Cumulative American Butterfish Distribution by Month")
 
-but_sum
 but_annual
 but_monthly
+ggsave("../../figs/habitat-models/but-monthly.png", width=20, height=15, dpi=500, units="in")
 
-grid.arrange(cod_annual, had_annual, flo_annual, mac_annual, but_annual)
 
+average_predictions = predicted %>% group_by(lat, lon, Species) %>% summarise(Average=mean(predicted))
+average_predictions = as.data.frame(average_predictions)
+ggplot(average_predictions)+
+  geom_point(
+    aes(x=lon, 
+        y=lat, 
+        colour=log(floor(Average)), 
+        alpha=ifelse(log(floor(Average)) < 0, 0, 1)
+    ), 
+    size=0.1
+  )+facet_wrap(~Species)+
+  labs(x="Longitude",
+       y="Latitude",
+       title="Mean Predicted Distribution (Jan 1980 - Dec 1989)",
+       colour="Catch"
+  )+
+  scale_colour_gradient(low="white", high="red")+
+  guides(alpha=FALSE)
 
+ggsave("../../figs/habitat-models/mean-predicted.png", width=15, height=10, dpi=500, units="in")
+
+summed_predictions = predicted %>% group_by(lat, lon, Species) %>% summarise(Total=sum(predicted))
+summed_predictions = as.data.frame(summed_predictions)
+ggplot(summed_predictions)+
+  geom_point(
+    aes(x=lon, 
+        y=lat, 
+        colour=log(floor(Total)), 
+        alpha=ifelse(log(floor(Total)) < 0, 0, 1)
+    ), 
+    size=0.1
+  )+facet_wrap(~Species)+
+  labs(x="Longitude",
+       y="Latitude",
+       title="Cumulative Predicted Distribution (Jan 1980 - Dec 1989)",
+       colour="Catch"
+  )+
+  scale_colour_gradient(low="white", high="red")+
+  guides(alpha=FALSE)
+
+ggsave("../../figs/habitat-models/cumulate-predicted.png", width=15, height=10, dpi=500, units="in")
 
