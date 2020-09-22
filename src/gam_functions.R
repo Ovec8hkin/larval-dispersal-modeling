@@ -156,7 +156,7 @@ plot_cumulative_catch <- function(df, title){
       ), 
       size=0.1
     )+
-    scale_color_gradient2()+
+    scale_color_gradient(low="white", high="red")+
     labs(x="Longitude", 
          y="Latitude", 
          title=title, 
@@ -178,11 +178,10 @@ plot_average_catch <- function(df, title){
       ), 
       size=0.1
     )+
-    scale_color_gradient2()+
-    labs(x="Longitude", 
-         y="Latitude", 
-         title=title, 
-         color="Catch"
+    labs(x="Longitude",
+         y="Latitude",
+         title=title,
+         colour="Catch"
     )+
     guides(alpha=FALSE)
   return(p)
@@ -215,24 +214,26 @@ plot_yearly_catch <- function(df, title){
 plot_monthly_catch <- function(df, title){
   monthly_average_predictions = df %>% 
     group_by(lat, lon, month) %>% 
-    summarise(Total=sum(predicted))
+    summarise(Average=mean(predicted))
   
-  ggplot(monthly_average_predictions)+
+  p = ggplot(monthly_average_predictions)+
     geom_point(
-      aes(x=lon,
-          y=lat,
-          colour=log(floor(Total)),
-          alpha=ifelse(log(floor(Total)) < 0, 0, 1)
-      ),
+      aes(x=lon, 
+          y=lat, 
+          colour=log(floor(Average)), 
+          alpha=ifelse(log(floor(Average)) < 0, 0, 1)
+      ), 
       size=0.1
     )+
-    scale_color_gradient2()+
     labs(x="Longitude",
          y="Latitude",
          title=title,
-         color="Catch"
+         colour="Catch"
     )+
+    scale_colour_gradient(low="white", high="red")+
     guides(alpha=FALSE)+facet_wrap(~month)
+  
+  return(p)
 }
 
 
