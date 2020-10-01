@@ -121,8 +121,8 @@ ggplot(summed_predictions)+
   geom_point(
     aes(x=lon, 
         y=lat, 
-        colour=log(floor(Total)), 
-        alpha=ifelse(log(floor(Total)) < 0, 0, 1)
+        colour=floor(Total), 
+        alpha=ifelse(floor(Total) == 0, 0, 1)
     ), 
     size=0.1
   )+facet_wrap(~Species)+
@@ -135,4 +135,15 @@ ggplot(summed_predictions)+
   guides(alpha=FALSE)
 
 ggsave("../../figs/habitat-models/cumulate-predicted.png", width=15, height=10, dpi=500, units="in")
+
+
+# -- Saveing Prediction -- #
+drop_cols = c("sfc_temp", "sfc_salt", "depth", "easting", "northing", "floored")
+pred_save = predicted[!(names(predicted) %in% drop_cols)]
+write.csv(pred_save, "../../auxdata/spawning-predictions.csv")
+
+
+
+
+
 
