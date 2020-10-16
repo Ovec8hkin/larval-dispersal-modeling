@@ -130,9 +130,9 @@ def combine_data_for_year(basedir, year, fname):
 	all_lats_last = np.array([])
 	all_depths_last = np.array([])
 	all_times_last = np.array([])
-	
-	all_settled = np.array([])
-	
+	all_temps_last = np.array([])
+	all_bathy_last = np.array([])
+	all_settled = np.array([])	
 	for f in files:
 		d = nc.Dataset(f)
 		
@@ -144,6 +144,8 @@ def combine_data_for_year(basedir, year, fname):
 		final_lons = d.variables['final_lons'][:].data
 		final_lats = d.variables['final_lats'][:].data
 		final_depths = d.variables['final_depths'][:].data
+		final_temps = d.variables['final_temps'][:].data
+		final_bathy = d.variables['final_bathy'][:].data
 		final_times = d.variables['final_times'][:].data
 		
 		settled = d.variables['settled_particles'][:].data
@@ -159,7 +161,8 @@ def combine_data_for_year(basedir, year, fname):
 		all_lats_last = np.concatenate((all_lats_last, final_lats))
 		all_depths_last = np.concatenate((all_depths_last, final_depths))
 		all_times_last = np.concatenate((all_times_last, final_times))
-		
+		all_temps_last = np.concatenate((all_temps_last, final_temps))
+		all_bathy_last = np.concatenate((all_bathy_last, final_bathy))
 		
 		
 		all_settled = np.concatenate((all_settled, settled.astype(int)))
@@ -176,6 +179,8 @@ def combine_data_for_year(basedir, year, fname):
 						np.array([all_lons_last]).transpose(), 
 						np.array([all_lats_last]).transpose(),
 						np.array([all_depths_last]).transpose(),
+                		np.array([all_temps_last]).transpose(),
+                		np.array([all_bathy_last]).transpose(),
 						np.array([all_times_last]).transpose()
 				   ))
 	
@@ -184,7 +189,7 @@ def combine_data_for_year(basedir, year, fname):
 def get_data_for_years(basedir, years, fname):
 	
 	all_start = np.empty(shape=(1, 4))
-	all_end = np.empty(shape=(1, 4))
+	all_end = np.empty(shape=(1, 6))
 	all_settled = np.empty(shape=(1,))
 	
 	for y in years:
