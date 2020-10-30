@@ -117,12 +117,12 @@ get_environmental_data <- function(ys, ms=1:12){
   for(y in ys){
     for(m in ms){
       month = str_pad(m, 2, pad="0")
-      fname=paste("../auxdata/environmental-data/environmental_data_", y, month, ".csv", sep="")
+      fname=paste("../auxdata/environmental-data_new/environmental_data_", y, month, ".csv", sep="")
       print(fname)
       pred_data = read.csv(fname)
       colnames(pred_data) = c("lon", "lat", "sfc_temp", "sfc_salt", "depth")
-      nor_eas = convert_to_northing_easting(pred_data$lat, pred_data$lon)
-      pred_data = cbind(pred_data, nor_eas)
+      #nor_eas = convert_to_northing_easting(pred_data$lat, pred_data$lon)
+      #pred_data = cbind(pred_data, nor_eas)
       
       # sub = (pred_data$sfc_salt > 30 & pred_data$sfc_salt < 35) & 
       #   (pred_data$sfc_temp > -2 & pred_data$sfc_temp < 30) & 
