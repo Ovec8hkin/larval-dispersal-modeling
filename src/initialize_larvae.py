@@ -1,85 +1,98 @@
 import numpy as np
-from shapely import geometry as sgeo
-import glob
-from datetime import date
+import math
+from datetime import datetime, timedelta
 
-def compute_bounding_envelope(polygon):
-	env = polygon.envelope
-	boundary_coords = env.exterior.coords.xy
-	lons = np.array(boundary_coords[0])
-	lats = np.array(boundary_coords[1])
+import sys
+sys.path.append('../')
+from src import data
 
-	lons.sort()
-	lats.sort()
+def get_month(dayofyear):
+    return (datetime(1984, 1, 1) + timedelta(dayofyear+1)).month
 
-	lon_min, lon_max = lons[0], lons[-1]
-	lat_min, lat_max = lats[0], lats[-1]
+def place_particles(x, y, n):
+    r = 1000
+    # random angle
+    alpha = 2 * math.pi * np.random.random(n)
+    # random radius
+    rad = r * np.sqrt(np.random.random(n))
+    # calculating coordinates
+    px = rad * np.cos(alpha) + x
+    py = rad * np.sin(alpha) + y
+    return px, py
 
-	return lon_min, lon_max, lat_min, lat_max
-	
-def generate_random_points(bounds, num):
-	lon_min, lon_max, lat_min, lat_max = bounds
+def seed_particles(pos, N, month_props, month_dates):
+    #print(pos)
+    x, y, m, p = pos[0], pos[1], pos[2], pos[3]
+    n = N*p*month_props[m.astype(int)-1]
+    n = np.round(n).astype(int)
+    px, py = place_particles(x, y, n)
+    #mask = month_masks[int(m)]
+    date=month_dates[int(m)]
+    ds=np.random.choice(date, size=px.size)
+    
+    max_depth = 130
+    depths = np.random.uniform(0, max_depth, size=px.size)
+    
+    inter = np.ravel(np.column_stack((px, py, depths, ds)))
+    return inter
 
-	xs = np.random.uniform(lon_min, lon_max, num)
-	ys = np.random.uniform(lat_min, lat_max, num)
-	
-	return xs, ys
-	
-def generate_depths(bounds, num):
-	depth_min, depth_max = bounds
-	
-	depths = np.random.uniform(depth_min, depth_max, num)
-	return depths
-	
-def generate_times(bounds, month, num):
-	beg_date, end_date = bounds
-	
-	ts = np.random.randint(beg_date, end_date, num)*24 # put into hours rather than days 
-	return ts
+def initialize_particles(df, N, spawn_start, spawn_end):
+    #N = 1000000
+    #spawn_start = 60
+    #spawn_end = 151
 
-def mask_points(xs, ys, polygon):
-	x_flat = xs.flatten()
-	y_flat = ys.flatten()
-	
-	all_coords = np.array(list(map(list, zip(x_flat, y_flat))))
-	
-	points = []
-	for c in all_coords:
-		x, y = c[0], c[1]
-		p = sgeo.Point(x, y)
-		points.append(p.within(polygon))
-		
-	good_coords = all_coords[np.array(points)]
-	
-	xs, ys = good_coords[:, 0], good_coords[:, 1]
-	n = len(xs)
-	
-	return xs, ys, n
+    # Generate spawning dates for each particles
+    spawn_mean = (spawn_start+spawn_end)/2  # Assume mean is halfway through season
+    spawn_std = (spawn_end - spawn_start)/6 # 99% of particle spawned in season
+    dates = np.random.normal(spawn_mean, spawn_std, N)
+    dates = np.round(dates) # Round to nearest whole number day
 
-def save_to_file(filename, xs, ys, depths, times):
-	
-	if len(xs.shape) > 1:
-		xs = xs.flatten()
-		ys = ys.flatten()
-	
-	nparticles = len(xs)
-	
-	nums = np.linspace(1, nparticles, nparticles)
-	data = np.column_stack((nums, xs, ys, depths, times))
-	
-	np.savetxt(filename, data, fmt=["%.0f","%.4f","%.4f","%.2f","%.2f"], delimiter="\t")
-	
-	with open(filename, 'r+') as f:
-		content = f.read()
-		f.seek(0, 0)
-		f.write(str(nparticles-1)+"\n")
-		f.write(content)
-		
-	return filename		
-		
-def get_bounds_for_month(year, month):
-	month_length = (date(year, month+1, 1) - date(year, month, 1)).days
-	beg_date = (date(year, month, 1) - date(year, 1, 1)).days + 1
-	end_date = beg_date+month_length
-	
-	return beg_date, end_date
+    # Convert days of year into months
+    to_months = np.vectorize(get_month)
+    spawning_months = to_months(dates)
+
+    # Compute proportion of dates in each month
+    month_props = np.zeros(shape=(12,))
+    unique = np.unique(spawning_months)
+    for u in unique:
+        mask = spawning_months == u
+        total = mask.sum()
+        month_props[u-1] = total/len(spawning_months)
+
+    # Precompute the dates that fall in each month
+    month_dates = {}
+    for i in range(1, 13):
+        mask = spawning_months == i
+        month_dates[i] = dates[mask]
+
+    # Pull relevant data from dataframe
+    xs = df['lon'].to_numpy()
+    ys = df['lat'].to_numpy()
+    #xs, ys = data.project(lons, lats) # Project lat/lon into northing/easting coords
+    months = df['month'].to_numpy()
+    pred = df['pred_std'].to_numpy()
+    d = np.hstack((xs.reshape(-1, 1), ys.reshape(-1, 1), months.reshape(-1, 1), pred.reshape(-1, 1)))
+
+    # Seed particles at each position x, y for each month
+    pos = np.array([seed_particles(x, N, month_props, month_dates) for x in d], dtype=object)
+    pos = pos[np.array([y.size>0 for y in pos])] # Remove positions at which no particles were seeded
+    pos = np.concatenate(pos) # Join position arrays into single 1D array
+    pos = pos.reshape(-1, 4) # Reshape position array into 4 columns (x, y, h, date)
+
+    return pos, dates, spawning_months
+
+def save_particles_to_file(monthly_particles, s, y, m, output_dir):
+    sp = s.lower().replace(" ", "_")
+    fname = "../data/initial_positions/{}_{}{}.txt".format(sp, y, str(m).zfill(2))
+    nums = np.arange(1, len(monthly_particles)+1)
+    
+    print(fname)
+    np.savetxt(fname, monthly_particles, delimiter="\t", fmt=['%d', '%01.9f', '%01.9f', '%01.9f', '%01.2f'])
+
+    with open(fname, "r+") as f:
+        content = f.read()
+        f.seek(0, 0)
+        f.write(str(len(nums)-1).rstrip('\r\n') + '\n' + content)
+
+    print("Finished initial save.")
+    return fname

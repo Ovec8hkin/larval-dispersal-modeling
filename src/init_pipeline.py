@@ -3,17 +3,20 @@ import argparse
 import numpy as np
 import os
 import shutil
+import pandas as pd
+from datetime import datetime, timedelta
 
 import data as data
+
+import sys
+sys.path.append('.')
 import initialize_larvae as init
 	
 if __name__ == "__main__":
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument("--years",   dest="years",   nargs=2, type=int)
-	parser.add_argument("--months",  dest="months",  nargs=2, type=int)
+	parser.add_argument("--years", dest="years", nargs=2, type=int)
 	parser.add_argument("--out_dir", dest="out_dir", nargs=1, type=str)
-	parser.add_argument("--in_dir",  dest="in_dir",  nargs=1, type=str)
 	
 	inps = parser.parse_args()
 
@@ -31,48 +34,88 @@ if __name__ == "__main__":
 					"11": "nov",
 					"12": "dec"
 	}
+
+	species = ["Atlantic Cod", "Haddock", "Yellowtail Flounder", "Atlantic Mackerel", "American Butterfish"]
+	year_range = range(inps.years[0], inps.years[1]+1)
+	month_range = range(1, 13)
+
+	depths = {
+				"Atlantic Cod": 90,
+				"Haddock": 130,
+				"Yellowtail Flounder": 90,
+				"Atlantic Mackerel": 70,
+				"American Butterfish": 110
+			}
+
+	spawning_bounds = {
+		"Atlantic Cod": (0, 151),
+		"Haddock": (60, 151),
+		"Yellowtail Flounder": (60, 180),
+		"Atlantic Mackerel": (121, 212),
+		"American Butterfish": (121, 243)
+	}
+
+	output_dir = "../data/initial_positions"
 	
-	for y in range(inps.years[0], inps.years[1]+1):
-		for m in range(inps.months[0], inps.months[1]+1):
-			files = glob.glob("{}/release_*{}*.txt".format(inps.in_dir[0], month_names[str(m)]))
-			all_xs, all_ys, all_ds, all_ts = np.array([]), np.array([]), np.array([]), np.array([])
+	fish_data = pd.read_csv("../auxdata/spawning-predictions-std.csv")
+	for s in species:
 
-			for f in files:
-				print(f)
-				region = data.get_release_region_polygon(f)
-				bounds = init.compute_bounding_envelope(region)
+		sp = s.lower().replace(" ", "-")
+		species_dir = "{}/{}".format(inps.out_dir[0], sp)
+		os.makedirs(os.path.dirname(species_dir), exist_ok=True)
 
-				npoints = int(1000000*region.area/2)
+		init_dir = "{}/inits".format(species_dir)
+		print(init_dir)
+		print(os.path.exists(init_dir))
+		os.makedirs(init_dir, exist_ok=True)
 
-				xs, ys = init.generate_random_points(bounds, npoints)
-				xs, ys, nparticles = init.mask_points(xs, ys, region)
-				
-				xs, ys = data.project(xs, ys)
-				
-				depths = init.generate_depths((0, 100), nparticles)
-				
-				beg_date, end_date = init.get_bounds_for_month(y, m)
-				times = init.generate_times((beg_date, end_date), 0, nparticles)
-				
-				all_xs = np.append(all_xs, xs, axis=0)
-				all_ys = np.append(all_ys, ys, axis=0)
-				all_ds = np.append(all_ds, depths, axis=0)
-				all_ts = np.append(all_ts, times, axis=0)
-				
-			padded_month = str(m).zfill(2)
-				
-			filename = "particle_init_{}{}.txt".format(y, padded_month)
-			init.save_to_file(filename, all_xs, all_ys, all_ds, all_ts)
+		bounds = spawning_bounds[s]
+		depth = depths[s]
+		for y in year_range:
 
-			model_dir = "../Year{}/{}-{}/".format(y, padded_month, month_names[str(m)])
-			os.makedirs(os.path.dirname(model_dir), exist_ok=True)	
+			year_dir = "{}/{}".format(species_dir, str(y))
+			os.makedirs(year_dir, exist_ok=True)
+
+			data = fish_data[(fish_data.Species == s) & (fish_data.year == y)]
+			particles, dates, months = init.initialize_particles(data, 1000000, bounds[0], bounds[1])
 			
-			shutil.copy(filename, model_dir)
-			shutil.copy("/Volumes/jilab/zahner-ssf2020/model_runs/job_submit.sh", model_dir)
-			shutil.copt("/Volumes/jilab/zahner-ssf2020/model_runs/sbatch_gom3.sh", model_dir)
-			shutil.copy("../prep.m", model_dir)
+			min_month = (datetime(1984, 1, 1) + timedelta(bounds[0]+1)).month
+			max_month = (datetime(1984, 1, 1) + timedelta(bounds[1]+1)).month
+			
+			for m in range(min_month, max_month+1):
+
+				padded_month = str(m).zfill(2)
+				month_dir = "{}/{}".format(year_dir, padded_month)
+				os.makedirs(month_dir, exist_ok=True)
+
+				print(y, m)
+				try:
+					mi, ma = np.min(dates[np.where(months == m)]), np.max(dates[np.where(months == m)])
+					mask = np.logical_and(particles[:, -1] > mi-1, particles[:, -1] < ma+1)
+
+					monthly_particles = particles[mask, :]
+					nums = np.arange(1, len(monthly_particles)+1)
+					monthly_particles = np.hstack((nums.reshape(-1, 1), 
+										monthly_particles[:, 0].reshape(-1, 1), 
+										monthly_particles[:, 1].reshape(-1, 1),
+										monthly_particles[:, 2].reshape(-1, 1),
+										np.abs((monthly_particles[:, 3]*24)).reshape(-1, 1)
+										))
+
+					fname = init.save_particles_to_file(monthly_particles, s, y, m, output_dir)
 				
-	os.chdir('..')
+				except Exception as e:
+					print(e)
+					continue
+
+				filename = "particle_init_{}{}.txt".format(y, padded_month)
+					
+				shutil.copy(fname, "{}/{}".format(init_dir, filename))
+				shutil.copy(fname, "{}/{}".format(month_dir, filename))
+				shutil.copy("../bin/job_submit.sh", month_dir)
+				shutil.copy("../bin/sbatch_gom3.sh", month_dir)
+				shutil.copy("../bin/prep.m", month_dir)
+
 	
 			
 	
