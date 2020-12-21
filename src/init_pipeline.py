@@ -21,20 +21,6 @@ if __name__ == "__main__":
 	inps = parser.parse_args()
 
 	
-	month_names = { "1": "jan",
-					"2": "feb",
-					"3": "mar",
-					"4": "apr",
-					"5": "may",
-					"6": "jun",
-					"7": "jul",
-					"8": "aug",
-					"9": "sep",
-					"10": "oct",
-					"11": "nov",
-					"12": "dec"
-	}
-
 	species = ["Atlantic Cod", "Haddock", "Yellowtail Flounder", "Atlantic Mackerel", "American Butterfish"]
 	year_range = range(inps.years[0], inps.years[1]+1)
 	month_range = range(1, 13)
@@ -77,7 +63,7 @@ if __name__ == "__main__":
 			os.makedirs(year_dir, exist_ok=True)
 
 			data = fish_data[(fish_data.Species == s) & (fish_data.year == y)]
-			particles, dates, months = init.initialize_particles(data, 1000000, bounds[0], bounds[1])
+			particles, dates, months = init.initialize_particles(data, 1000000, y, bounds[0], bounds[1])
 			
 			min_month = (datetime(1984, 1, 1) + timedelta(bounds[0]+1)).month
 			max_month = (datetime(1984, 1, 1) + timedelta(bounds[1]+1)).month
@@ -99,8 +85,8 @@ if __name__ == "__main__":
 										monthly_particles[:, 0].reshape(-1, 1), 
 										monthly_particles[:, 1].reshape(-1, 1),
 										monthly_particles[:, 2].reshape(-1, 1),
-										np.abs((monthly_particles[:, 3]*24)).reshape(-1, 1)
-										))
+										(np.abs(monthly_particles[:, 3])*24).reshape(-1, 1)
+                                                               ))
 
 					fname = init.save_particles_to_file(monthly_particles, s, y, m, output_dir)
 				
@@ -114,8 +100,4 @@ if __name__ == "__main__":
 				shutil.copy(fname, "{}/{}".format(month_dir, filename))
 				shutil.copy("../bin/job_submit.sh", month_dir)
 				shutil.copy("../bin/sbatch_gom3.sh", month_dir)
-				shutil.copy("../bin/prep.m", month_dir)
-
-	
-			
-	
+				shutil.copy("../bin/preps/{}-prep.m".format(sp), "{}/prep.m".format(month_dir))

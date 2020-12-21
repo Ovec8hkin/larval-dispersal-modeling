@@ -6,8 +6,8 @@ import sys
 sys.path.append('../')
 from src import data
 
-def get_month(dayofyear):
-    return (datetime(1984, 1, 1) + timedelta(dayofyear+1)).month
+def get_month(y, dayofyear):
+    return (datetime(y, 1, 1) + timedelta(dayofyear-1)).timetuple().tm_mon
 
 def place_particles(x, y, n):
     r = 1000
@@ -36,7 +36,7 @@ def seed_particles(pos, N, month_props, month_dates):
     inter = np.ravel(np.column_stack((px, py, depths, ds)))
     return inter
 
-def initialize_particles(df, N, spawn_start, spawn_end):
+def initialize_particles(df, N, y, spawn_start, spawn_end):
     #N = 1000000
     #spawn_start = 60
     #spawn_end = 151
@@ -49,7 +49,7 @@ def initialize_particles(df, N, spawn_start, spawn_end):
 
     # Convert days of year into months
     to_months = np.vectorize(get_month)
-    spawning_months = to_months(dates)
+    spawning_months = to_months(y, dates)
 
     # Compute proportion of dates in each month
     month_props = np.zeros(shape=(12,))
@@ -79,6 +79,12 @@ def initialize_particles(df, N, spawn_start, spawn_end):
     pos = np.concatenate(pos) # Join position arrays into single 1D array
     pos = pos.reshape(-1, 4) # Reshape position array into 4 columns (x, y, h, date)
 
+    #x_bounds = (420000, 1740000)
+    #y_bounds = (-550000, 360000)
+    #mask = np.logical_and(np.logical_and(pos[:, 0] >= x_bounds[0], pos[:, 0] <= x_bounds[1]), np.logical_and(pos[:, 1] >= y_bounds[0], pos[:, 1] <= y_bounds[1]))
+
+    #pos = pos[mask, :]
+
     return pos, dates, spawning_months
 
 def save_particles_to_file(monthly_particles, s, y, m, output_dir):
@@ -87,7 +93,7 @@ def save_particles_to_file(monthly_particles, s, y, m, output_dir):
     nums = np.arange(1, len(monthly_particles)+1)
     
     print(fname)
-    np.savetxt(fname, monthly_particles, delimiter="\t", fmt=['%d', '%01.9f', '%01.9f', '%01.9f', '%01.2f'])
+    np.savetxt(fname, monthly_particles, delimiter="\t", fmt=['%.0d', '%.4f', '%.4f', '%.2f', '%.2f'])
 
     with open(fname, "r+") as f:
         content = f.read()
