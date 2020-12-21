@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=WB_bit
 #SBATCH --partition=compute
-##SBATCH --mail-user=jzahner@whoi.edu
+##SBATCH --mail-user=joshuazahner@gmail.com
 ##SBATCH --mail-type=ALL
 #SBATCH --nodes=1
 #SBATCH -n 36
@@ -17,7 +17,7 @@ echo `date`
 
 module load intel/2018 netcdf/intel openmpi/intel/3.0.1
 
-/vortexfs1/home/jzahner/fiscm_gom/trunk/fiscm model_settings.nml > ./haddock-198303.log
+/vortexfs1/home/jzahner/fiscm_gom/trunk/fiscm model_settings.nml > ./model_log.log
 
 echo "Finish run"
 echo `date`
