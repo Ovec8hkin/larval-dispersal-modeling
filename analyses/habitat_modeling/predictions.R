@@ -1,10 +1,10 @@
 source("../../src/gam_functions.R")
 
-cod_catch_data = get_ecomon_catch_data("gadmor_100m3", "../auxdata/catch-data/ecomon_cod.csv")
-had_catch_data = get_ecomon_catch_data("melaeg_100m3", "../auxdata/catch-data/ecomon_haddock.csv")
-flo_catch_data = get_ecomon_catch_data("limfer_100m3", "../auxdata/catch-data/ecomon_flounder.csv")
-mac_catch_data = get_ecomon_catch_data("scosco_100m3", "../auxdata/catch-data/ecomon_mackerel.csv")
-but_catch_data = get_ecomon_catch_data("pepspp_100m3", "../auxdata/catch-data/ecomon_butterfish.csv")
+cod_catch_data = get_ecomon_catch_data("gadmor_100m3", "../../auxdata/catch-data/ecomon_cod.csv")
+had_catch_data = get_ecomon_catch_data("melaeg_100m3", "../../auxdata/catch-data/ecomon_haddock.csv")
+flo_catch_data = get_ecomon_catch_data("limfer_100m3", "../../auxdata/catch-data/ecomon_flounder.csv")
+mac_catch_data = get_ecomon_catch_data("scosco_100m3", "../../auxdata/catch-data/ecomon_mackerel.csv")
+but_catch_data = get_ecomon_catch_data("pepspp_100m3", "../../auxdata/catch-data/ecomon_butterfish.csv")
 
 cod_catch_data = cbind(cod_catch_data, convert_to_northing_easting(cod_catch_data$lat, cod_catch_data$lon))
 had_catch_data = cbind(had_catch_data, convert_to_northing_easting(had_catch_data$lat, had_catch_data$lon))
@@ -22,10 +22,10 @@ but_gam = gam(model_formula, data=but_catch_data, family="nb")
 
 #predicted_data = predict_for_years_months(1980:1990, model=gam_ths)
 
-environmental_data = get_environmental_data(1980:1989)
-sub = (pred_data$sfc_salt > 30 & pred_data$sfc_salt < 35) & 
-  (pred_data$sfc_temp > -2 & pred_data$sfc_temp < 30) &
-  (pred_data$depth > 0 & pred_data$depth < 2000)
+environmental_data = get_environmental_data(2012:2016)
+sub = (environmental_data$sfc_salt > 30 & environmental_data$sfc_salt < 35) & 
+  (environmental_data$sfc_temp > -2 & environmental_data$sfc_temp < 30) &
+  (environmental_data$depth > 0 & environmental_data$depth < 2000)
 
 edata = environmental_data[sub,]
 
@@ -140,7 +140,7 @@ ggsave("../../figs/habitat-models/cumulate-predicted.png", width=15, height=10, 
 # -- Saveing Prediction -- #
 drop_cols = c("sfc_temp", "sfc_salt", "depth", "easting", "northing", "floored")
 pred_save = predicted[!(names(predicted) %in% drop_cols)]
-write.csv(pred_save, "../../auxdata/spawning-predictions.csv")
+write.csv(pred_save, "../auxdata/spawning-predictions-warm.csv")
 
 
 
