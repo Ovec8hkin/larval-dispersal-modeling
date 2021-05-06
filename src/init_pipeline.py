@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
 	output_dir = "../data/initial_positions"
 	
-	fish_data = pd.read_csv("../auxdata/spawning-predictions-std.csv")
+	fish_data = pd.read_csv("../auxdata/spawning-predictions-std-warm.csv")
 	for s in species:
 
 		sp = s.lower().replace(" ", "-")

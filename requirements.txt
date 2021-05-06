@@ -3,10 +3,10 @@ pandas
 scipy
 matplotlib
 jupyter
-alphashape
+#alphashape
 geopandas
 shapely
 netCDF4
 pyproj
 descartes
-cmocean
+#cmocean

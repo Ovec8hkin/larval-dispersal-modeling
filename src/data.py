@@ -120,6 +120,8 @@ def get_data_files_for_year(basedir, year, fname):
 	
 def combine_data_for_year(basedir, year, fname):
 	files = get_data_files_for_year(basedir, year, fname)
+
+	print(files)
 	
 	all_lons_start = np.array([])
 	all_lats_start = np.array([])
